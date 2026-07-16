@@ -1,12 +1,16 @@
 import cv2 as cv
 import numpy as np
+import os
+import time
 
 from orbbec_capture import OrbbecCamera
 
 
 WINDOW_NAME = "Distance"
 thres = [700, 900]
-SAVE_EVERY_N_FRAMES = 0
+
+
+SAVE_PATH = "/home/jetson/ws/Facial-authenticity-judgment/code"
 
 
 def set_thre1(thre):
@@ -23,6 +27,9 @@ def should_exit():
 
 
 def main():
+    
+    os.makedirs(SAVE_PATH, exist_ok=True)
+
     cv.namedWindow(WINDOW_NAME)
     cv.createTrackbar("dist1", WINDOW_NAME, thres[0], 3000, set_thre1)
     cv.createTrackbar("dist2", WINDOW_NAME, thres[1], 3000, set_thre2)
@@ -59,13 +66,25 @@ def main():
             if body_contour is not None:
                 cv.drawContours(bgr_image, body_contour, -1, (0, 255, 0), 2, cv.LINE_AA)
             cv.imshow("Body Contour", bgr_image)
-            frame_idx += 1
-            if SAVE_EVERY_N_FRAMES and frame_idx % SAVE_EVERY_N_FRAMES == 0:
-                cv.imwrite("depth.jpg", color_depth_map)
-                cv.imwrite("segment.jpg", segment_image)
-                cv.imwrite("contour.jpg", bgr_image)
-            if should_exit():
+
+            key = cv.waitKey(1) & 0xFF
+            if key == ord('s'):
+                timestamp = int(time.time())
+                depth_file = os.path.join(SAVE_PATH, f"depth_{timestamp}.jpg")
+                segment_file = os.path.join(SAVE_PATH, f"segment_{timestamp}.jpg")
+                contour_file = os.path.join(SAVE_PATH, f"contour_{timestamp}.jpg")
+
+                cv.imwrite(depth_file, color_depth_map)
+                cv.imwrite(segment_file, segment_image)
+                cv.imwrite(contour_file, bgr_image)
+
+                print(f"Saved images:\n  {depth_file}\n  {segment_file}\n  {contour_file}")
+
+            elif key in (27, ord('q')):
                 break
+
+            frame_idx += 1
+
     finally:
         camera.release()
         cv.destroyAllWindows()
